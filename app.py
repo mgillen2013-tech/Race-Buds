@@ -4,6 +4,7 @@ Prototype delivery path: email -> Verizon MMS gateway (number@vzwpix.com).
 To move to Twilio later, replace deliver() and keep everything else.
 """
 import hmac
+import io
 import os
 import smtplib
 import subprocess
@@ -34,6 +35,14 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "")  # Gmail app password, not your logi
 # Text Siri reads aloud before the clip. {name} is replaced with the sender's name.
 MESSAGE_TEMPLATE = os.environ.get("MESSAGE_TEMPLATE", "From {name}")
 
+# Spoken intro ("From Mom") is generated as speech and glued onto the front of the clip, so the
+# order is guaranteed. If it can't be generated, the note is sent without it and the text above is used.
+SPOKEN_INTRO = os.environ.get("SPOKEN_INTRO", "1") == "1"
+INTRO_TEMPLATE = os.environ.get("INTRO_TEMPLATE", "From {name}")
+# Text body when the intro is spoken. Siri reads this aloud too, so keep it blank-ish.
+# If Verizon bounces a blank body, set this to a single period.
+TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", " ")
+
 # With DRY_RUN=1 (or no SMTP settings) clips are saved to ./sent instead of emailed.
 DRY_RUN = os.environ.get("DRY_RUN", "0") == "1" or not (DEST_ADDRESS and SMTP_USER and SMTP_PASS)
 
@@ -59,23 +68,54 @@ def release_slot(sender_key: str):
 
 
 # ---- Audio ----
-def to_mp3(raw: bytes, content_type: str) -> bytes:
-    """Browsers record WebM or MP4/AAC; the phone needs MP3."""
+_intro_cache: dict[str, bytes] = {}
+
+
+def spoken_intro(name: str):
+    """Return MP3 bytes of 'From <name>' spoken aloud, or None if it can't be made."""
+    if name in _intro_cache:
+        return _intro_cache[name]
+    try:
+        from gtts import gTTS  # needs internet access to Google's speech service
+
+        buf = io.BytesIO()
+        gTTS(INTRO_TEMPLATE.replace("{name}", name), lang="en").write_to_fp(buf)
+        data = buf.getvalue()
+        if not data:
+            return None
+        _intro_cache[name] = data  # only successes are cached
+        return data
+    except Exception:
+        app.logger.exception("spoken intro failed; sending without it")
+        return None
+
+
+def to_mp3(raw: bytes, content_type: str, intro: bytes | None = None) -> bytes:
+    """Browsers record WebM or MP4/AAC; the phone needs MP3. Optionally put a spoken intro first."""
     ext = ".mp4" if "mp4" in content_type else ".webm"
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     with tempfile.TemporaryDirectory() as tmp:
         src, dst = Path(tmp) / f"in{ext}", Path(tmp) / "out.mp3"
         src.write_bytes(raw)
-        subprocess.run(
-            [ffmpeg, "-y", "-i", str(src), "-t", str(MAX_CLIP_SECONDS), "-vn",
-             "-ac", "1", "-ar", "44100", "-b:a", "64k", str(dst)],
-            check=True, capture_output=True, timeout=60,
-        )
+        if intro:
+            intro_file = Path(tmp) / "intro.mp3"
+            intro_file.write_bytes(intro)
+            norm = "aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono"
+            cmd = [
+                ffmpeg, "-y", "-i", str(intro_file), "-i", str(src),
+                "-filter_complex",
+                f"[0:a]{norm},apad=pad_dur=0.4[a0];[1:a]{norm}[a1];[a0][a1]concat=n=2:v=0:a=1[out]",
+                "-map", "[out]", "-t", str(MAX_CLIP_SECONDS + 8), "-b:a", "64k", str(dst),
+            ]
+        else:
+            cmd = [ffmpeg, "-y", "-i", str(src), "-t", str(MAX_CLIP_SECONDS), "-vn",
+                   "-ac", "1", "-ar", "44100", "-b:a", "64k", str(dst)]
+        subprocess.run(cmd, check=True, capture_output=True, timeout=60)
         return dst.read_bytes()
 
 
 # ---- Delivery ----
-def deliver(mp3: bytes, sender_name: str):
+def deliver(mp3: bytes, sender_name: str, spoken: bool = False):
     if DRY_RUN:
         out = Path(__file__).parent / "sent"
         out.mkdir(exist_ok=True)
@@ -85,7 +125,7 @@ def deliver(mp3: bytes, sender_name: str):
     msg["From"] = SMTP_USER
     msg["To"] = DEST_ADDRESS
     msg["Subject"] = "Voice note"  # an empty subject + empty body got bounced by Verizon
-    msg.set_content(MESSAGE_TEMPLATE.replace("{name}", sender_name))
+    msg.set_content(TEXT_WHEN_SPOKEN if spoken else MESSAGE_TEMPLATE.replace("{name}", sender_name))
     msg.add_attachment(mp3, maintype="audio", subtype="mpeg", filename="voice-note.mp3")
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
         smtp.login(SMTP_USER, SMTP_PASS)
@@ -126,8 +166,9 @@ def send():
         return jsonify(error=f"You can send another in {max(1, wait // 60)} min.", retry_after=wait), 429
 
     try:
-        mp3 = to_mp3(clip.read(), clip.mimetype or "")
-        deliver(mp3, name)
+        intro = spoken_intro(name) if SPOKEN_INTRO else None
+        mp3 = to_mp3(clip.read(), clip.mimetype or "", intro)
+        deliver(mp3, name, spoken=intro is not None)
     except Exception:
         app.logger.exception("send failed")
         release_slot(sender_key)  # a failed send shouldn't burn their turn
