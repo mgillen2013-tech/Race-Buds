@@ -39,9 +39,9 @@ MESSAGE_TEMPLATE = os.environ.get("MESSAGE_TEMPLATE", "From {name}")
 # order is guaranteed. If it can't be generated, the note is sent without it and the text above is used.
 SPOKEN_INTRO = os.environ.get("SPOKEN_INTRO", "1") == "1"
 INTRO_TEMPLATE = os.environ.get("INTRO_TEMPLATE", "From {name}")
-# Text body when the intro is spoken. Siri reads this aloud too, so keep it blank-ish.
-# If Verizon bounces a blank body, set this to a single period.
-TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", " ")
+# Text body when the intro is spoken. Siri reads this aloud before the clip. Must not be blank:
+# a blank body made Siri say "a message I can't read" (and blank messages have bounced).
+TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", "").strip() or "Race Buds"
 
 # With DRY_RUN=1 (or no SMTP settings) clips are saved to ./sent instead of emailed.
 DRY_RUN = os.environ.get("DRY_RUN", "0") == "1" or not (DEST_ADDRESS and SMTP_USER and SMTP_PASS)

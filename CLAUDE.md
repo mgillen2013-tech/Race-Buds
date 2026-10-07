@@ -36,7 +36,9 @@ nothing to announce through.
   arrive varies, so the attachment sometimes plays before "From <name>". Fix: speak the name inside the
   audio itself (gTTS intro prepended with ffmpeg), so order is guaranteed.
 - A message with an empty subject and a blank body was bounced by Verizon ("inbox is full"). Cause unknown,
-  so a subject is always set. If a blank body bounces, set `TEXT_WHEN_SPOKEN` to ".".
+  so a subject is always set.
+- A blank text body (spoken intro on) made Siri say "a message I can't read" before the clip. So the
+  body is never blank: `TEXT_WHEN_SPOKEN` defaults to "Race Buds" (a blank value falls back to it).
 - MP3 attachments worked; the first M4A attempt bounced.
 - Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
