@@ -8,7 +8,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 - `templates/index.html`: mobile-first page. "Watch live stats" button (Garmin LiveTrack link),
   name field, record button (30 s max), preview, Send. Name is saved in localStorage.
 - `app.py` (Flask): `/` page (needs `?key=ACCESS_KEY`), `/send` upload endpoint, `/healthz`.
-  Send flow: validate key and name -> per-name cooldown (30 min, in memory) -> optional spoken intro
+  Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
   `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).
 - Hosted on Render (paid instance, required, see below), deployed from a private GitHub repo.

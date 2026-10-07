@@ -24,7 +24,7 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # reject uploads over 5 MB
 RUNNER_NAME = os.environ.get("RUNNER_NAME", "M")
 LIVETRACK_URL = os.environ.get("LIVETRACK_URL", "")
 ACCESS_KEY = os.environ.get("ACCESS_KEY", "")  # optional: page + send require ?key=...
-COOLDOWN_SECONDS = int(os.environ.get("COOLDOWN_SECONDS", "1800"))  # 30 minutes
+COOLDOWN_SECONDS = int(os.environ.get("COOLDOWN_SECONDS", "0"))  # 0 = off; 1800 = 30 minutes
 MAX_CLIP_SECONDS = 30
 
 DEST_ADDRESS = os.environ.get("DEST_ADDRESS", "")  # e.g. 6105852764@vzwpix.com

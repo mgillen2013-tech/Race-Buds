@@ -12,7 +12,7 @@ Microphone access needs https or localhost.
 1. Push this folder to GitHub.
 2. Render -> New Web Service -> pick the repo. Build command: `pip install -r requirements.txt`
    Start command: `gunicorn app:app --workers 1 --threads 4`
-   (One worker matters: the 30-minute cooldown is kept in memory.)
+   (One worker matters: the optional cooldown, `COOLDOWN_SECONDS`, is kept in memory.)
 3. Add the variables from `.env.example` under Environment.
 4. Share `https://your-app.onrender.com/?key=YOUR_ACCESS_KEY` with your people.
 

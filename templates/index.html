@@ -97,7 +97,7 @@
 
   <section class="panel" id="panel" data-state="idle">
     <h2>Send a voice note</h2>
-    <p>Up to {{ max_seconds }} seconds. Each person can send one every {{ cooldown_minutes }} minutes.</p>
+    <p>Up to {{ max_seconds }} seconds.{% if cooldown_minutes %} Each person can send one every {{ cooldown_minutes }} minutes.{% endif %}</p>
 
     <label for="name">Your name</label>
     <input id="name" type="text" maxlength="40" autocomplete="given-name" placeholder="Mom">
