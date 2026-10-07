@@ -5,9 +5,15 @@ iPhone as an MMS with an MP3 attachment, and Siri (Announce Notifications) reads
 while the phone is locked, hands-free. Built for the runner's November 2026 marathon.
 
 ## How it works
-- `templates/index.html`: mobile-first page. "Watch live stats" button (Garmin LiveTrack link),
-  name field, record button (30 s max), preview, Send. Name is saved in localStorage.
-- `app.py` (Flask): `/` page (needs `?key=ACCESS_KEY`), `/send` upload endpoint, `/healthz`.
+- `templates/index.html`: mobile-first "Bib" design (navy page, white race-bib card). Top: LIVE pill and
+  "Mile X of 26.2". Bib: runner name, progress bar, projected finish vs goal, HR/pace/distance/elapsed,
+  segment table. Bottom bar (pinned): name field (required, saved in localStorage), "Record a cheer"
+  (30 s max), preview, Send. Polls `/api/stats` every 10 s while visible. No location shown on purpose.
+- `stats.py`: pure functions for the stats payload: formatting, projected finish (elapsed + remaining x
+  mean of last 3 miles), segments (blocks of `SEGMENT_MILES`, pace = time / distance), status
+  waiting/live/stale (>90 s old)/finished, and demo data. Tests in `tests/test_stats.py` (`pytest`).
+- `app.py` (Flask): `/` page (needs `?key=ACCESS_KEY`), `/send` upload endpoint, `/api/stats` (same key),
+  `/healthz`. Real LiveTrack data is not wired in yet: without `DEMO_STATS=1` stats are always "waiting".
   Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
   `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).
@@ -18,7 +24,8 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 
 ## Config (environment variables, see .env.example; never commit real values)
 `DEST_ADDRESS`, `SMTP_USER`, `SMTP_PASS` (Gmail app password), `RUNNER_NAME`, `LIVETRACK_URL`,
-`ACCESS_KEY`, `COOLDOWN_SECONDS`, `SPOKEN_INTRO`, `INTRO_TEMPLATE`, `TEXT_WHEN_SPOKEN`, `MESSAGE_TEMPLATE`.
+`ACCESS_KEY`, `COOLDOWN_SECONDS`, `SPOKEN_INTRO`, `INTRO_TEMPLATE`, `TEXT_WHEN_SPOKEN`, `MESSAGE_TEMPLATE`,
+`GOAL_TIME` (default 3:00:00), `SEGMENT_MILES` (default 4), `DEMO_STATS` (local only; ignored when `RENDER` is set).
 With no SMTP settings (or `DRY_RUN=1`) clips are saved to `./sent/` instead of emailed.
 
 ## Run locally (Mac)

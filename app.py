@@ -17,6 +17,8 @@ from pathlib import Path
 import imageio_ffmpeg
 from flask import Flask, jsonify, render_template, request
 
+import stats
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # reject uploads over 5 MB
 
@@ -42,6 +44,13 @@ INTRO_TEMPLATE = os.environ.get("INTRO_TEMPLATE", "From {name}")
 # Text body when the intro is spoken. Siri reads this aloud before the clip. Must not be blank:
 # a blank body made Siri say "a message I can't read" (and blank messages have bounced).
 TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", "").strip() or "Lock in"
+
+# Live stats on the page. GOAL_TIME drives the projected-finish note; SEGMENT_MILES sets the segment size.
+GOAL_SEC = stats.parse_goal(os.environ.get("GOAL_TIME", "3:00:00"))
+SEGMENT_MILES = int(os.environ.get("SEGMENT_MILES", "4"))
+# DEMO_STATS=1 serves sample numbers so the page can be checked without a run. Never in production:
+# it is ignored on Render (which sets RENDER=true).
+DEMO_STATS = os.environ.get("DEMO_STATS", "0") == "1" and not os.environ.get("RENDER")
 
 # With DRY_RUN=1 (or no SMTP settings) clips are saved to ./sent instead of emailed.
 DRY_RUN = os.environ.get("DRY_RUN", "0") == "1" or not (DEST_ADDRESS and SMTP_USER and SMTP_PASS)
@@ -137,6 +146,17 @@ def key_ok(supplied: str) -> bool:
     return not ACCESS_KEY or hmac.compare_digest(supplied or "", ACCESS_KEY)
 
 
+def current_stats(demo_variant: str = "live") -> dict:
+    """The live stats payload. Until a real data source is wired in, only demo mode has numbers."""
+    if DEMO_STATS:
+        raw = stats.demo_raw(demo_variant if demo_variant in ("live", "stale", "finished", "waiting") else "live")
+    else:
+        raw = None
+    payload = stats.build(raw, GOAL_SEC, SEGMENT_MILES)
+    payload["demo"] = DEMO_STATS
+    return payload
+
+
 @app.get("/")
 def index():
     key = request.args.get("key", "")
@@ -145,7 +165,17 @@ def index():
     return render_template(
         "index.html", runner=RUNNER_NAME, livetrack_url=LIVETRACK_URL, key=key,
         max_seconds=MAX_CLIP_SECONDS, cooldown_minutes=COOLDOWN_SECONDS // 60,
+        stats=current_stats(request.args.get("demo", "live")), demo=DEMO_STATS,
     )
+
+
+@app.get("/api/stats")
+def api_stats():
+    if not key_ok(request.args.get("key", "")):
+        return jsonify(error="This link isn't valid."), 403
+    resp = jsonify(current_stats(request.args.get("demo", "live")))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.post("/send")

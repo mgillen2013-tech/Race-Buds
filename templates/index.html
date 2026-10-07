@@ -3,140 +3,392 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B2A4A">
 <title>Cheer for {{ runner }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #f2f5f7;
-    --card: #ffffff;
-    --ink: #0e2238;
-    --slate: #56677a;
-    --line: #d5dfe7;
-    --sky: #dce9f3;
-    --red: #d9322a;
-    --red-dark: #b32620;
-    --ok: #1f7a55;
+    --ground: #0B2A4A;
+    --ground-deep: #06192E;
+    --ground-raised: #123A63;
+    --bib: #FFFFFF;
+    --ink: #0B2A4A;
+    --ink-muted: #4A6179;
+    --on-navy-muted: #A9BFD6;
+    --accent: #D43D0A;
+    --accent-dark: #B33308;
+    --soft: #F3F7FB;
+    --line: #DDE5EE;
+    --track: #E3EAF2;
+    --pin: #C9D6E4;
+    --note: #FFB08A;
+    --field-line: #5C86B0;
+    --ok: #8FE3B5;
+    --err: #FFB08A;
+    --cond: "Barlow Condensed", "Arial Narrow", sans-serif;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
+  html, body { height: 100%; }
   body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font: 400 17px/1.5 "Figtree", system-ui, sans-serif;
-    padding: max(20px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    margin: 0; background: var(--ground-deep); color: #fff; overflow: hidden;
+    font: 400 16px/1.4 "Barlow", system-ui, sans-serif;
   }
-  main { max-width: 480px; margin: 0 auto; }
-  h1, h2 { font-family: "Bricolage Grotesque", "Figtree", sans-serif; letter-spacing: -0.01em; margin: 0; }
-  h1 { font-size: 2.1rem; line-height: 1.1; font-weight: 700; margin-top: 8px; }
-  h2 { font-size: 1.25rem; font-weight: 700; }
-  .lede { color: var(--slate); margin: 12px 0 24px; }
-
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-  .panel p { margin: 6px 0 0; color: var(--slate); font-size: 0.95rem; }
-
-  a.watch {
-    display: block; text-align: center; margin-top: 16px; padding: 14px 16px;
-    background: var(--ink); color: #fff; text-decoration: none; font-weight: 600; border-radius: 12px;
+  .app {
+    height: 100vh; height: 100dvh; max-width: 480px; margin: 0 auto;
+    display: flex; flex-direction: column; background: var(--ground);
   }
-  a.watch:hover { background: #163556; }
-  .note { font-size: 0.9rem; color: var(--slate); margin-top: 12px; }
-
-  label { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 0.95rem; }
-  input[type=text] {
-    width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var(--line);
-    border-radius: 10px; background: #fff; color: var(--ink);
+  .scroll {
+    flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: max(16px, env(safe-area-inset-top)) 20px 16px;
+    display: flex; flex-direction: column; gap: 14px;
   }
+  :focus-visible { outline: 3px solid #7FB4E6; outline-offset: 2px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.14em; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; }
 
-  .recorder { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 24px 0 8px; }
-  #rec {
-    width: 112px; height: 112px; border-radius: 50%; border: 0; cursor: pointer;
-    background: var(--red); color: #fff; font: 700 1rem "Figtree", sans-serif;
-    box-shadow: 0 0 0 8px var(--sky);
+  /* Top bar */
+  .topbar { display: flex; align-items: center; gap: 8px; }
+  .pill {
+    display: flex; align-items: center; gap: 8px; background: var(--ground-raised); border-radius: 999px;
+    padding: 6px 12px 6px 10px; font-weight: 700; font-size: 13px; letter-spacing: 0.12em;
   }
-  #rec:hover { background: var(--red-dark); }
-  [data-state=recording] #rec { animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 50% { box-shadow: 0 0 0 16px var(--sky); } }
-  @media (prefers-reduced-motion: reduce) { [data-state=recording] #rec { animation: none; } }
-  #timer { font-variant-numeric: tabular-nums; color: var(--slate); min-height: 1.5em; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--on-navy-muted); }
+  [data-status=live] .dot { background: #FF7A45; animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+  .demo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; background: #FFD84D; color: #2A2100; border-radius: 6px; padding: 3px 7px; }
+  .where { margin-left: auto; font-size: 14px; color: var(--on-navy-muted); font-weight: 500; text-align: right; }
 
-  audio { width: 100%; }
-  .row { display: flex; gap: 10px; margin-top: 12px; }
-  .row button { flex: 1; font: 600 1rem "Figtree", sans-serif; padding: 13px; border-radius: 12px; cursor: pointer; }
-  #send { background: var(--ink); color: #fff; border: 0; }
-  #send:disabled { opacity: 0.6; cursor: default; }
-  #redo { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  /* Bib card */
+  .bib {
+    position: relative; background: var(--bib); color: var(--ink); border-radius: 14px;
+    padding: 26px 22px 22px; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: 0 8px 0 -2px var(--ground-deep);
+  }
+  .pin { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--pin); }
+  .pin.tl { top: 10px; left: 10px; } .pin.tr { top: 10px; right: 10px; }
+  .pin.bl { bottom: 10px; left: 10px; } .pin.br { bottom: 10px; right: 10px; }
+  .runner {
+    margin: 0; font-family: var(--cond); font-size: 88px; font-weight: 800; line-height: 0.92;
+    letter-spacing: -0.01em; white-space: nowrap; overflow: hidden;
+  }
+  .track { position: relative; height: 10px; border-radius: 5px; background: var(--track); }
+  .fill { height: 10px; border-radius: 5px; background: var(--accent); width: 0; transition: width 0.6s ease; }
+  .knob {
+    position: absolute; top: -4px; left: calc(0% - 9px); width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--ink); transition: left 0.6s ease;
+  }
+  .ends { display: flex; justify-content: space-between; margin-top: 8px; }
 
-  #status { min-height: 1.5em; margin-top: 14px; text-align: center; font-weight: 500; }
+  .band {
+    background: var(--ground); color: #fff; border-radius: 10px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .band .eyebrow { color: var(--on-navy-muted); }
+  .gap { font-size: 14px; color: var(--note); font-weight: 600; margin-top: 2px; }
+  .big { font-family: var(--cond); font-size: 46px; font-weight: 800; line-height: 1; white-space: nowrap; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 0; }
+  .grid div { border-top: 2px solid var(--ink); padding-top: 6px; }
+  .grid dt { margin: 0; }
+  .grid dd { margin: 0; font-family: var(--cond); font-size: 38px; font-weight: 700; line-height: 1.05; white-space: nowrap; }
+  .unit { font-family: "Barlow", sans-serif; font-size: 16px; font-weight: 600; color: var(--ink-muted); margin-left: 4px; }
+
+  .segs { width: 100%; border-collapse: collapse; }
+  .segs th { text-align: left; font-size: 11px; letter-spacing: 0.14em; font-weight: 600; color: var(--ink-muted); padding: 0 0 6px; }
+  .segs th:nth-child(2), .segs td:nth-child(2) { text-align: left; padding-left: 12px; white-space: nowrap; }
+  .segs th:last-child, .segs td:last-child { text-align: right; width: 84px; }
+  .segs td { border-top: 1px solid var(--line); padding: 7px 0; vertical-align: baseline; }
+  .segs td:first-child { font-weight: 600; font-size: 16px; }
+  .segs td:nth-child(2) { font-size: 14px; color: var(--ink-muted); }
+  .segs td:last-child { font-family: var(--cond); font-size: 25px; font-weight: 700; line-height: 1; white-space: nowrap; }
+  .segs td:last-child .unit { font-size: 13px; margin-left: 2px; }
+  .segs tr.now td { background: var(--soft); }
+  .segs tr.now td:first-child { border-radius: 8px 0 0 8px; padding-left: 6px; }
+  .segs tr.now td:last-child { border-radius: 0 8px 8px 0; padding-right: 6px; }
+  .tag { margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; background: var(--accent); color: #fff; border-radius: 999px; padding: 2px 8px; vertical-align: 2px; }
+
+  .msg { margin: 0; font-size: 15px; color: var(--ink-muted); }
+  .stale-note { margin: 0; font-size: 14px; color: var(--ink-muted); background: var(--soft); border-radius: 8px; padding: 8px 10px; }
+  [data-status=stale] .grid, [data-status=stale] .band, [data-status=stale] .segs { opacity: 0.55; }
+  [data-status=waiting] .segs, [data-status=waiting] .seg-wrap { display: none; }
+
+  .lt {
+    display: block; text-align: center; padding: 13px 16px; border-radius: 12px; text-decoration: none;
+    font-weight: 600; color: #fff; border: 1.5px solid var(--field-line);
+  }
+  .lt:hover { background: var(--ground-raised); }
+  .lt.quiet { border: 0; padding: 4px; font-weight: 500; font-size: 14px; color: var(--on-navy-muted); text-decoration: underline; }
+
+  /* Action bar, pinned to the bottom */
+  .bar {
+    flex: none; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 20px max(14px, env(safe-area-inset-bottom));
+    background: var(--ground); border-top: 1px solid var(--ground-raised);
+  }
+  .bar label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--on-navy-muted); text-transform: uppercase; }
+  .bar input {
+    height: 48px; width: 100%; border: 1.5px solid var(--field-line); border-radius: 12px; padding: 0 14px;
+    background: var(--ground-raised); color: #fff; font: 600 18px "Barlow", system-ui, sans-serif;
+  }
+  .bar input::placeholder { color: #7F9AB6; font-weight: 500; }
+  .rec {
+    position: relative; overflow: hidden; height: 60px; border: 0; border-radius: 16px; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px;
+    font: 700 19px "Barlow", system-ui, sans-serif; cursor: pointer;
+  }
+  .rec:hover:not(:disabled) { background: var(--accent-dark); }
+  .rec:disabled { background: var(--ground-raised); color: var(--on-navy-muted); cursor: not-allowed; }
+  .rec > * { position: relative; }
+  .rec .level { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(0, 0, 0, 0.22); }
+  [data-state=recording] .rec { background: var(--accent-dark); }
+  .rec .stop { display: none; width: 18px; height: 18px; border-radius: 3px; background: #fff; }
+  [data-state=recording] .rec .stop { display: block; }
+  [data-state=recording] .rec .mic { display: none; }
+  .hint { margin: 0; text-align: center; font-size: 13px; color: var(--on-navy-muted); }
+  #status { margin: 0; text-align: center; font-weight: 600; font-size: 15px; }
+  #status:empty { display: none; }
   #status.ok { color: var(--ok); }
-  #status.err { color: var(--red-dark); }
-
-  :focus-visible { outline: 3px solid #2b6cb0; outline-offset: 2px; }
+  #status.err { color: var(--err); }
+  audio { width: 100%; height: 44px; }
+  .row { display: flex; gap: 10px; }
+  .row button {
+    flex: 1; height: 52px; border-radius: 14px; cursor: pointer; font: 700 17px "Barlow", system-ui, sans-serif;
+  }
+  .primary { background: var(--accent); color: #fff; border: 0; }
+  .primary:disabled { opacity: 0.6; cursor: default; }
+  .secondary { background: transparent; color: #fff; border: 1.5px solid var(--field-line); }
 
   /* Which controls show in which state */
   .review, .again { display: none; }
-  [data-state=review] .review, [data-state=sending] .review, [data-state=done] .again { display: block; }
-  [data-state=review] .recorder, [data-state=sending] .recorder, [data-state=done] .recorder { display: none; }
-  [data-state=done] .review { display: none; }
+  [data-state=review] .review, [data-state=sending] .review { display: flex; flex-direction: column; gap: 10px; }
+  [data-state=done] .again { display: flex; }
+  [data-state=review] .who, [data-state=sending] .who, [data-state=done] .who,
+  [data-state=review] .rec, [data-state=sending] .rec, [data-state=done] .rec,
+  [data-state=review] .hint, [data-state=sending] .hint, [data-state=done] .hint { display: none; }
+  .who { display: flex; flex-direction: column; gap: 8px; }
+  [data-state=recording] .who { display: none; }
+
+  @media (max-width: 360px) {
+    .scroll { padding-left: 14px; padding-right: 14px; }
+    .bib { padding: 24px 16px 20px; }
+    .big { font-size: 40px; }
+    .grid dd { font-size: 34px; }
+    .bar { padding-left: 14px; padding-right: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fill, .knob { transition: none; }
+    [data-status=live] .dot { animation: none; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Cheer for {{ runner }} from anywhere</h1>
-  <p class="lede">Follow the run live, then send a voice note. {{ runner }} hears it in their headphones during the race.</p>
+<div class="app">
+  <div class="scroll" id="scroll">
+    <header class="topbar" data-status="{{ stats.status }}" id="topbar">
+      <div class="pill"><span class="dot" aria-hidden="true"></span><span id="pillText">LIVE</span></div>
+      {% if demo %}<span class="demo" title="Sample numbers, not a real run">DEMO</span>{% endif %}
+      <div class="where" id="where">{{ stats.text.where }}</div>
+    </header>
 
-  <section class="panel">
-    <h2>Follow live</h2>
-    <p>Heart rate, pace, distance, and the route on the map.</p>
+    <article class="bib" id="bib" data-status="{{ stats.status }}" aria-label="{{ runner }}'s race">
+      <span class="pin tl"></span><span class="pin tr"></span><span class="pin bl"></span><span class="pin br"></span>
+
+      <div>
+        <div class="eyebrow" id="eyebrow">NOW RUNNING</div>
+        <h1 class="runner" id="runner">{{ runner|upper }}</h1>
+      </div>
+
+      <div>
+        <div class="track" role="progressbar" id="progress" aria-label="Distance covered" aria-valuemin="0" aria-valuemax="26.2" aria-valuenow="0">
+          <div class="fill" id="fill"></div>
+          <span class="knob" id="knob"></span>
+        </div>
+        <div class="ends eyebrow"><span>START</span><span>FINISH</span></div>
+      </div>
+
+      <div class="band">
+        <div>
+          <div class="eyebrow" id="bandLabel">PROJECTED FINISH</div>
+          <div class="gap" id="gap"></div>
+        </div>
+        <div class="big" id="projected">--</div>
+      </div>
+
+      <dl class="grid">
+        <div><dt class="eyebrow">Heart rate</dt><dd><span id="hr">--</span><span class="unit">bpm</span></dd></div>
+        <div><dt class="eyebrow">Pace</dt><dd><span id="pace">--</span><span class="unit">/mi</span></dd></div>
+        <div><dt class="eyebrow">Distance</dt><dd><span id="dist">--</span><span class="unit">mi</span></dd></div>
+        <div><dt class="eyebrow">Elapsed</dt><dd><span id="elapsed">--</span></dd></div>
+      </dl>
+
+      <div class="seg-wrap" id="segWrap">
+        <table class="segs">
+          <thead><tr><th scope="col">SEGMENT</th><th scope="col">AVG HR</th><th scope="col">AVG PACE</th></tr></thead>
+          <tbody id="segRows"></tbody>
+        </table>
+      </div>
+
+      <p class="msg" id="waitMsg" hidden>Live stats show up here once {{ runner }} starts running.</p>
+      <p class="stale-note" id="staleNote" hidden></p>
+    </article>
+
     {% if livetrack_url %}
-      <a class="watch" href="{{ livetrack_url }}" target="_blank" rel="noopener">Watch live stats</a>
-    {% else %}
-      <p class="note">The live link will appear here once the run starts.</p>
+      <a class="lt" id="ltLink" href="{{ livetrack_url }}" target="_blank" rel="noopener">Open Garmin LiveTrack</a>
     {% endif %}
-  </section>
+  </div>
 
-  <section class="panel" id="panel" data-state="idle">
-    <h2>Send a voice note</h2>
-    <p>Up to {{ max_seconds }} seconds.{% if cooldown_minutes %} Each person can send one every {{ cooldown_minutes }} minutes.{% endif %}</p>
-
-    <label for="name">Your name</label>
-    <input id="name" type="text" maxlength="40" autocomplete="given-name" placeholder="Mom">
-
-    <div class="recorder">
-      <button id="rec" type="button">Record</button>
-      <div id="timer" aria-live="off"></div>
+  <section class="bar" id="panel" data-state="idle" aria-label="Send a voice note">
+    <div class="who">
+      <label for="name">Your name · {{ runner|upper }} hears it first</label>
+      <input id="name" type="text" maxlength="40" autocomplete="given-name" placeholder="Type your name" required>
     </div>
+
+    <button id="rec" class="rec" type="button" disabled>
+      <span class="level" id="level"></span>
+      <svg class="mic" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+      <span class="stop" aria-hidden="true"></span>
+      <span id="recLabel">Record a cheer</span>
+    </button>
 
     <div class="review">
       <audio id="preview" controls></audio>
       <div class="row">
-        <button id="redo" type="button">Record again</button>
-        <button id="send" type="button">Send</button>
+        <button id="redo" class="secondary" type="button">Record again</button>
+        <button id="send" class="primary" type="button">Send</button>
       </div>
     </div>
 
-    <div class="again">
-      <div class="row"><button id="redo2" type="button" style="background:#fff;border:1px solid var(--line);color:var(--ink)">Record another</button></div>
+    <div class="again row">
+      <button id="redo2" class="secondary" type="button">Record another</button>
     </div>
 
-    <div id="status" role="status"></div>
+    <p id="status" role="status"></p>
+    <p class="hint" id="hint"></p>
   </section>
-</main>
+</div>
 
 <script>
 const MAX = {{ max_seconds }};
 const KEY = {{ key|tojson }};
-const panel = document.getElementById("panel");
-const recBtn = document.getElementById("rec");
-const timerEl = document.getElementById("timer");
-const statusEl = document.getElementById("status");
-const preview = document.getElementById("preview");
-const nameEl = document.getElementById("name");
+const COOLDOWN_MIN = {{ cooldown_minutes }};
+const RUNNER = {{ runner|tojson }};
+const INITIAL_STATS = {{ stats|tojson }};
+const $ = id => document.getElementById(id);
+
+/* ---------- Live stats ---------- */
+const PILL = { live: "LIVE", stale: "DELAYED", finished: "FINISHED", waiting: "NOT STARTED" };
+const EYEBROW = { live: "NOW RUNNING", stale: "NOW RUNNING", finished: "FINISHED", waiting: "RACE DAY" };
+
+function fitRunner() {
+  const el = $("runner");
+  el.style.fontSize = "";
+  const max = parseFloat(getComputedStyle(el).fontSize);
+  if (el.scrollWidth > el.clientWidth) {
+    el.style.fontSize = Math.max(28, Math.floor(max * el.clientWidth / el.scrollWidth)) + "px";
+  }
+}
+
+function render(s) {
+  const t = s.text || {};
+  $("bib").dataset.status = s.status;
+  $("topbar").dataset.status = s.status;
+  $("pillText").textContent = PILL[s.status] || "LIVE";
+  $("where").textContent = s.status === "stale" ? `Last update ${t.updatedAgo}` : (t.where || "");
+  $("eyebrow").textContent = EYEBROW[s.status] || "NOW RUNNING";
+
+  const pct = Math.round((s.progress || 0) * 1000) / 10;
+  $("fill").style.width = pct + "%";
+  $("knob").style.left = `calc(${pct}% - 9px)`;
+  $("progress").setAttribute("aria-valuenow", s.distanceMi || 0);
+  $("progress").setAttribute("aria-valuetext", t.where || "Not started");
+
+  $("bandLabel").textContent = s.status === "finished" ? "FINISH TIME" : "PROJECTED FINISH";
+  $("projected").textContent = t.projected || "--";
+  $("gap").textContent = t.gap || "";
+
+  $("hr").textContent = t.heartRate || "--";
+  $("pace").textContent = t.pace || "--";
+  $("dist").textContent = t.distance || "--";
+  $("elapsed").textContent = t.elapsed || "--";
+
+  const rows = $("segRows");
+  rows.replaceChildren(...(s.segments || []).map(g => {
+    const tr = document.createElement("tr");
+    if (g.current) tr.className = "now";
+    const a = document.createElement("td");
+    a.textContent = g.label;
+    if (g.current) {
+      const tag = document.createElement("span");
+      tag.className = "tag"; tag.textContent = "NOW";
+      a.append(tag);
+    }
+    const b = document.createElement("td");
+    b.textContent = g.avgHr ? `${g.avgHr} bpm` : "--";
+    const c = document.createElement("td");
+    c.textContent = g.paceText;
+    const u = document.createElement("span");
+    u.className = "unit"; u.textContent = "/mi";
+    c.append(u);
+    tr.append(a, b, c);
+    return tr;
+  }));
+  $("segWrap").hidden = !(s.segments || []).length;
+
+  $("waitMsg").hidden = s.status !== "waiting";
+  const stale = $("staleNote");
+  stale.hidden = s.status !== "stale";
+  stale.textContent = s.status === "stale"
+    ? `Last update ${t.updatedAgo}. These numbers may be behind (the signal can drop in crowds).` : "";
+
+  const lt = $("ltLink");
+  if (lt) lt.className = s.status === "waiting" ? "lt" : "lt quiet";
+}
+
+const statsParams = new URLSearchParams({ key: KEY });
+const demoVariant = new URLSearchParams(location.search).get("demo");
+if (demoVariant) statsParams.set("demo", demoVariant);
+
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const res = await fetch(`/api/stats?${statsParams}`, { cache: "no-store" });
+    if (res.ok) render(await res.json());
+  } catch { /* offline for a moment: keep what's shown, the stale note covers old data */ }
+}
+
+render(INITIAL_STATS);
+fitRunner();
+if (document.fonts) document.fonts.ready.then(fitRunner);
+addEventListener("resize", fitRunner);
+setInterval(poll, 10000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+
+/* ---------- Voice note (same flow as before, restyled) ---------- */
+const panel = $("panel");
+const recBtn = $("rec");
+const recLabel = $("recLabel");
+const level = $("level");
+const statusEl = $("status");
+const hintEl = $("hint");
+const preview = $("preview");
+const nameEl = $("name");
 
 let recorder, stream, chunks = [], blob = null, tick = null, startedAt = 0, mime = "";
 
-nameEl.value = localStorage.getItem("rb_name") || "";
-nameEl.addEventListener("input", () => localStorage.setItem("rb_name", nameEl.value));
+const baseHint = `Up to ${MAX} sec` + (COOLDOWN_MIN ? ` · one cheer every ${COOLDOWN_MIN} min` : "");
+function syncName() {
+  const has = !!nameEl.value.trim();
+  recBtn.disabled = !has;
+  hintEl.textContent = has ? baseHint : `Type your name so ${RUNNER} knows who it's from`;
+}
+try { nameEl.value = localStorage.getItem("rb_name") || ""; } catch {}
+nameEl.addEventListener("input", () => {
+  try { localStorage.setItem("rb_name", nameEl.value); } catch {}
+  syncName();
+});
+syncName();
 
 const setState = s => { panel.dataset.state = s; };
 const say = (msg, cls = "") => { statusEl.textContent = msg; statusEl.className = cls; };
@@ -163,14 +415,14 @@ async function start() {
   recorder.start();
   startedAt = Date.now();
   setState("recording");
-  recBtn.textContent = "Stop";
   tick = setInterval(update, 200);
   update();
 }
 
 function update() {
-  const s = Math.floor((Date.now() - startedAt) / 1000);
-  timerEl.textContent = `0:${String(s).padStart(2, "0")} of 0:${MAX}`;
+  const s = Math.min(MAX, Math.floor((Date.now() - startedAt) / 1000));
+  recLabel.textContent = `Stop · 0:${String(s).padStart(2, "0")} of 0:${MAX}`;
+  level.style.width = Math.min(100, (Date.now() - startedAt) / (MAX * 10)) + "%";
   if (s >= MAX) stop();
 }
 
@@ -183,19 +435,19 @@ function finish() {
   stream.getTracks().forEach(t => t.stop());
   blob = new Blob(chunks, { type: recorder.mimeType || mime || "audio/webm" });
   preview.src = URL.createObjectURL(blob);
-  recBtn.textContent = "Record";
-  timerEl.textContent = "";
+  recLabel.textContent = "Record a cheer";
+  level.style.width = "0";
   setState("review");
 }
 
 recBtn.addEventListener("click", () => panel.dataset.state === "recording" ? stop() : start());
 
-function redo() { blob = null; preview.removeAttribute("src"); say(""); setState("idle"); }
-document.getElementById("redo").addEventListener("click", redo);
-document.getElementById("redo2").addEventListener("click", redo);
+function redo() { blob = null; preview.removeAttribute("src"); say(""); setState("idle"); syncName(); }
+$("redo").addEventListener("click", redo);
+$("redo2").addEventListener("click", redo);
 
-document.getElementById("send").addEventListener("click", async () => {
-  const sendBtn = document.getElementById("send");
+$("send").addEventListener("click", async () => {
+  const sendBtn = $("send");
   sendBtn.disabled = true; setState("sending"); say("Sending...");
   const form = new FormData();
   form.append("name", nameEl.value.trim());
@@ -205,7 +457,7 @@ document.getElementById("send").addEventListener("click", async () => {
     const res = await fetch("/send", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      say("Sent. It's on its way.", "ok");
+      say(`Sent. ${RUNNER} will hear it soon.`, "ok");
       setState("done");
     } else {
       say(data.error || "Couldn't send that one. Try again.", "err");
