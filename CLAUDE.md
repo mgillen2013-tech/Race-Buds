@@ -42,6 +42,15 @@ nothing to announce through.
 - MP3 attachments worked; the first M4A attempt bounced.
 - Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
+- LiveTrack data (checked Oct 2026): the old `/services/session/<id>/trackpoints` endpoint used by
+  github.com/Novex/garmin-livetrack-obs now 404s. The current site (Next.js) uses
+  `GET /api/v2/sessions/<id>?token=<token>` (session info: name, start/end, `postTrackPointFrequency` 15 s)
+  and `GET /api/sessions/<id>/track-points/common?token=<token>` (`{"trackPoints": [...]}`, paged with
+  `begin=`). Both return 403 unless you first GET the session page
+  (`/session/<id>/token/<token>`), keep its cookies, and send its `<meta name="csrf-token">` value as the
+  `Livetrack-Csrf-Token` header. Indoors with no GPS fix, `trackPoints` was empty; the fields inside a
+  track point are not seen yet. Garmin also has `/api/messages/spectator/audio` (its own spectator
+  voice messages), worth a look.
 - Spoken intro: gTTS is an unofficial Google TTS wrapper. It could not be tested in the build sandbox;
   failure falls back to the plain text message, so notes are never blocked. Voice is somewhat robotic.
 
