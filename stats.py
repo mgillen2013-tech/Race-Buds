@@ -13,17 +13,6 @@ STALE_AFTER_SEC = 90
 
 
 # ---- Formatting ----
-def parse_goal(text: str) -> int:
-    """'3:00:00' -> 10800. Two parts are read as h:mm ('3:30' -> 3 h 30 min)."""
-    parts = [int(p) for p in text.strip().split(":")]
-    if len(parts) == 2:
-        parts.append(0)
-    if len(parts) != 3:
-        raise ValueError(f"goal time should look like 3:00:00, got {text!r}")
-    h, m, s = parts
-    return h * 3600 + m * 60 + s
-
-
 def fmt_time(secs) -> str:
     """m:ss under an hour, h:mm:ss from an hour up."""
     secs = int(round(secs))
@@ -35,16 +24,6 @@ def fmt_time(secs) -> str:
 def fmt_miles(miles) -> str:
     """14.2 -> '14.2', 13.0 -> '13'."""
     return f"{round(miles, 1):g}"
-
-
-def gap_text(projected_sec, goal_sec) -> str:
-    """'48 sec under a 3:00:00 goal', '1:12 over a 3:00:00 goal'. Words, not just color."""
-    diff = int(round(projected_sec)) - goal_sec
-    goal = fmt_time(goal_sec)
-    if diff == 0:
-        return f"Right on a {goal} goal"
-    amount = f"{abs(diff)} sec" if abs(diff) < 60 else fmt_time(abs(diff))
-    return f"{amount} {'under' if diff < 0 else 'over'} a {goal} goal"
 
 
 def ago_text(secs) -> str:
@@ -112,16 +91,15 @@ def segments(splits, distance, elapsed, heart_rate=None, size=4, in_progress=Tru
     return out[-keep:]
 
 
-def build(raw, goal_sec, segment_miles=4, now=None):
+def build(raw, segment_miles=4, now=None):
     """Turn raw data into the /api/stats payload, including ready-to-show text."""
     now = now or datetime.now(timezone.utc)
-    goal = fmt_time(goal_sec)
     if not raw or not raw.get("updatedAt"):
         return {
             "status": "waiting", "updatedAt": None, "distanceMi": None, "elapsedSec": None,
-            "paceSecPerMi": None, "heartRate": None, "splits": [], "goalSec": goal_sec,
+            "paceSecPerMi": None, "heartRate": None, "splits": [],
             "projectedFinishSec": None, "segments": [], "progress": 0,
-            "text": {"where": f"{fmt_miles(RACE_MILES)} miles", "goal": goal, "gap": f"Goal {goal}"},
+            "text": {"where": f"{fmt_miles(RACE_MILES)} miles"},
         }
 
     updated = datetime.fromisoformat(raw["updatedAt"].replace("Z", "+00:00"))
@@ -145,19 +123,16 @@ def build(raw, goal_sec, segment_miles=4, now=None):
         "paceSecPerMi": pace,
         "heartRate": hr,
         "splits": splits,
-        "goalSec": goal_sec,
         "projectedFinishSec": None if projected is None else int(round(projected)),
         "segments": segs,
         "progress": min(1.0, distance / RACE_MILES),
         "text": {
             "where": f"{fmt_miles(RACE_MILES)} miles" if finished else f"Mile {fmt_miles(distance)} of {fmt_miles(RACE_MILES)}",
-            "goal": goal,
             "distance": fmt_miles(distance),
             "elapsed": fmt_time(elapsed),
             "pace": fmt_time(pace) if pace else None,
             "heartRate": str(hr) if hr else None,
             "projected": None if projected is None else fmt_time(projected),
-            "gap": gap_text(projected, goal_sec) if projected is not None else f"Goal {goal}",
             "updatedAgo": ago_text(age),
         },
     }

@@ -28,13 +28,6 @@ def test_fmt_time(secs, text):
     assert stats.fmt_time(secs) == text
 
 
-def test_parse_goal():
-    assert stats.parse_goal("3:00:00") == 10800
-    assert stats.parse_goal("3:30") == 12600
-    with pytest.raises(ValueError):
-        stats.parse_goal("180")
-
-
 def test_fmt_miles():
     assert stats.fmt_miles(14.2) == "14.2"
     assert stats.fmt_miles(13.0) == "13"
@@ -63,12 +56,6 @@ def test_projected_before_mile_three_uses_overall_pace():
 
 def test_projected_none_before_mile_one():
     assert stats.projected_finish(0.6, 250, []) is None
-
-
-def test_gap_sign():
-    assert stats.gap_text(10752, 10800) == "48 sec under a 3:00:00 goal"
-    assert stats.gap_text(10872, 10800) == "1:12 over a 3:00:00 goal"
-    assert stats.gap_text(10800, 10800) == "Right on a 3:00:00 goal"
 
 
 # ---- segments ----
@@ -115,20 +102,20 @@ def test_segments_average_hr_is_mean_of_splits():
 
 # ---- full payload ----
 def test_build_waiting():
-    p = stats.build(None, 10800, now=NOW)
+    p = stats.build(None, now=NOW)
     assert p["status"] == "waiting" and p["projectedFinishSec"] is None
 
 
 def test_build_live_and_stale():
     s = splits_of(*[412] * 5)
-    assert stats.build(raw(s, 5.1, 2100, age=10), 10800, now=NOW)["status"] == "live"
-    stale = stats.build(raw(s, 5.1, 2100, age=150), 10800, now=NOW)
+    assert stats.build(raw(s, 5.1, 2100, age=10), now=NOW)["status"] == "live"
+    stale = stats.build(raw(s, 5.1, 2100, age=150), now=NOW)
     assert stale["status"] == "stale" and stale["text"]["updatedAgo"] == "2 min ago"
 
 
 def test_build_finished():
     s = splits_of(*[410] * 26)
-    p = stats.build(raw(s, 26.2, 26 * 410 + 82), 10800, now=NOW)
+    p = stats.build(raw(s, 26.2, 26 * 410 + 82), now=NOW)
     assert p["status"] == "finished"
     assert p["projectedFinishSec"] == 26 * 410 + 82
     assert not any(g["current"] for g in p["segments"])
@@ -136,5 +123,5 @@ def test_build_finished():
 
 def test_demo_variants_build():
     for v in ("live", "stale", "finished", "waiting"):
-        p = stats.build(stats.demo_raw(v, now=NOW), 10800, now=NOW)
+        p = stats.build(stats.demo_raw(v, now=NOW), now=NOW)
         assert p["status"] == v

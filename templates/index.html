@@ -211,7 +211,7 @@
       <div class="band">
         <div>
           <div class="eyebrow" id="bandLabel">PROJECTED FINISH</div>
-          <div class="gap" id="gap"></div>
+          <div class="gap" id="gap">at recent pace</div>
         </div>
         <div class="big" id="projected">--</div>
       </div>
@@ -306,7 +306,7 @@ function render(s) {
 
   $("bandLabel").textContent = s.status === "finished" ? "FINISH TIME" : "PROJECTED FINISH";
   $("projected").textContent = t.projected || "--";
-  $("gap").textContent = t.gap || "";
+  $("gap").textContent = s.status === "finished" ? "Official time may differ slightly" : "at recent pace";
 
   $("hr").textContent = t.heartRate || "--";
   $("pace").textContent = t.pace || "--";

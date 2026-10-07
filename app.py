@@ -45,8 +45,7 @@ INTRO_TEMPLATE = os.environ.get("INTRO_TEMPLATE", "From {name}")
 # a blank body made Siri say "a message I can't read" (and blank messages have bounced).
 TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", "").strip() or "Lock in"
 
-# Live stats on the page. GOAL_TIME drives the projected-finish note; SEGMENT_MILES sets the segment size.
-GOAL_SEC = stats.parse_goal(os.environ.get("GOAL_TIME", "3:00:00"))
+# Live stats on the page. SEGMENT_MILES sets the segment size.
 SEGMENT_MILES = int(os.environ.get("SEGMENT_MILES", "4"))
 # DEMO_STATS=1 serves sample numbers so the page can be checked without a run. Never in production:
 # it is ignored on Render (which sets RENDER=true).
@@ -152,7 +151,7 @@ def current_stats(demo_variant: str = "live") -> dict:
         raw = stats.demo_raw(demo_variant if demo_variant in ("live", "stale", "finished", "waiting") else "live")
     else:
         raw = None
-    payload = stats.build(raw, GOAL_SEC, SEGMENT_MILES)
+    payload = stats.build(raw, SEGMENT_MILES)
     payload["demo"] = DEMO_STATS
     return payload
 

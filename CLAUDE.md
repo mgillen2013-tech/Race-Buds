@@ -6,7 +6,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 
 ## How it works
 - `templates/index.html`: mobile-first "Bib" design (navy page, white race-bib card). Top: LIVE pill and
-  "Mile X of 26.2". Bib: runner name, progress bar, projected finish vs goal, HR/pace/distance/elapsed,
+  "Mile X of 26.2". Bib: runner name, progress bar, projected finish (no goal shown, by request), HR/pace/distance/elapsed,
   segment table. Bottom bar (pinned): name field (required, saved in localStorage), "Record a cheer"
   (30 s max), preview, Send. Polls `/api/stats` every 10 s while visible. No location shown on purpose.
 - `stats.py`: pure functions for the stats payload: formatting, projected finish (elapsed + remaining x
@@ -25,7 +25,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 ## Config (environment variables, see .env.example; never commit real values)
 `DEST_ADDRESS`, `SMTP_USER`, `SMTP_PASS` (Gmail app password), `RUNNER_NAME`, `LIVETRACK_URL`,
 `ACCESS_KEY`, `COOLDOWN_SECONDS`, `SPOKEN_INTRO`, `INTRO_TEMPLATE`, `TEXT_WHEN_SPOKEN`, `MESSAGE_TEMPLATE`,
-`GOAL_TIME` (default 3:00:00), `SEGMENT_MILES` (default 4), `DEMO_STATS` (local only; ignored when `RENDER` is set).
+`SEGMENT_MILES` (default 4), `DEMO_STATS` (local only; ignored when `RENDER` is set).
 With no SMTP settings (or `DRY_RUN=1`) clips are saved to `./sent/` instead of emailed.
 
 ## Run locally (Mac)
@@ -70,7 +70,7 @@ nothing to announce through.
    paste the link without redeploying).
 3. Possible custom dashboard from LiveTrack data. There is no official LiveTrack API; community projects
    reverse-engineer the page. Spike first: check what the page loads in the browser network tab. Keep the
-   plain LiveTrack link as a fallback. Idea: projected finish vs the runner's goal.
+   plain LiveTrack link as a fallback. Projected finish is shown; the runner does not want a goal time on the page.
 4. Idea: show the runner's current song (Spotify's now-playing API, or Last.fm for Apple Music).
 5. Dress rehearsal on a long run: phone in a pocket or belt, moving, LiveTrack running, a few notes from family.
    Race crowds can drop cell signal, so test on a busy day if possible.
