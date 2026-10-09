@@ -6,7 +6,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 
 ## How it works
 - `templates/index.html`: mobile-first "Bib" design (navy page, white race-bib card). Top: LIVE pill and
-  "Mile X of 26.2". Bib: runner name, progress bar, projected finish (no goal shown, by request), HR/pace/distance/elapsed,
+  "Mile X of 26.2". Bib: runner name, progress bar, projected finish (no goal shown, by request), HR/avg pace (whole run)/distance/elapsed,
   segment table. Bottom bar (pinned): name field (required, saved in localStorage), "Record a cheer"
   (30 s max), preview, Send. Polls `/api/stats` every 10 s while visible. No location shown on purpose.
 - `stats.py`: pure functions for the stats payload: formatting, projected finish (elapsed + remaining x
@@ -78,8 +78,8 @@ nothing to announce through.
    and any "Open Garmin LiveTrack" link on the page.
    Untested until a real run with the deployed app: the IMAP search (Garmin's sender and email format).
 3. Possible custom dashboard from LiveTrack data. There is no official LiveTrack API; community projects
-   reverse-engineer the page. Spike first: check what the page loads in the browser network tab. Keep the
-   plain LiveTrack link was removed from the page at the runner's request. Projected finish is shown; the runner does not want a goal time on the page.
+   reverse-engineer the page. Built (see `livetrack.py`). The plain LiveTrack link was removed from the
+   page at the runner's request. Projected finish is shown; the runner does not want a goal time on the page.
 4. Idea: show the runner's current song (Spotify's now-playing API, or Last.fm for Apple Music).
 5. Dress rehearsal on a long run: phone in a pocket or belt, moving, LiveTrack running, a few notes from family.
    Race crowds can drop cell signal, so test on a busy day if possible.

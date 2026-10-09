@@ -107,7 +107,8 @@ def build(raw, segment_miles=4, now=None):
     distance = float(raw.get("distanceMi") or 0)
     elapsed = float(raw.get("elapsedSec") or 0)
     splits = raw.get("splits") or []
-    pace = raw.get("paceSecPerMi")
+    # Shown pace is the average for the whole run (runner's choice), not the last-minute pace.
+    pace = round(elapsed / distance) if distance >= 0.05 else None
     hr = raw.get("heartRate")
 
     finished = distance >= RACE_MILES or bool(raw.get("ended"))  # ended: the watch was stopped

@@ -125,3 +125,11 @@ def test_demo_variants_build():
     for v in ("live", "stale", "finished", "waiting"):
         p = stats.build(stats.demo_raw(v, now=NOW), now=NOW)
         assert p["status"] == v
+
+
+def test_shown_pace_is_whole_run_average():
+    s = splits_of(400, 440)
+    p = stats.build(raw(s, 2.5, 1050), now=NOW)  # raw says 420 "current", average is 1050 / 2.5 = 420
+    assert p["paceSecPerMi"] == 420
+    p = stats.build(raw(s, 2.0, 900), now=NOW)
+    assert p["text"]["pace"] == "7:30"
