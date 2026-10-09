@@ -177,7 +177,7 @@ def index():
         return "This link isn't valid. Ask for the original link.", 403
     page_stats = current_stats(request.args.get("demo", "live"))
     return render_template(
-        "index.html", runner=RUNNER_NAME, livetrack_url=LIVE.url or LIVETRACK_URL, key=key,
+        "index.html", runner=RUNNER_NAME, key=key,
         max_seconds=MAX_CLIP_SECONDS, cooldown_minutes=COOLDOWN_SECONDS // 60,
         stats=page_stats, demo=DEMO_STATS,
     )

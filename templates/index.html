@@ -114,12 +114,6 @@
   [data-status=stale] .grid, [data-status=stale] .band, [data-status=stale] .segs { opacity: 0.55; }
   [data-status=waiting] .segs, [data-status=waiting] .seg-wrap { display: none; }
 
-  .lt {
-    display: block; text-align: center; padding: 13px 16px; border-radius: 12px; text-decoration: none;
-    font-weight: 600; color: #fff; border: 1.5px solid var(--field-line);
-  }
-  .lt:hover { background: var(--ground-raised); }
-  .lt.quiet { border: 0; padding: 4px; font-weight: 500; font-size: 14px; color: var(--on-navy-muted); text-decoration: underline; }
 
   /* Action bar, pinned to the bottom */
   .bar {
@@ -234,9 +228,6 @@
       <p class="stale-note" id="staleNote" hidden></p>
     </article>
 
-    {% if livetrack_url %}
-      <a class="lt" id="ltLink" href="{{ livetrack_url }}" target="_blank" rel="noopener">Open Garmin LiveTrack</a>
-    {% endif %}
   </div>
 
   <section class="bar" id="panel" data-state="idle" aria-label="Send a voice note">
@@ -342,8 +333,6 @@ function render(s) {
   stale.textContent = s.status === "stale"
     ? `Last update ${t.updatedAgo}. These numbers may be behind (the signal can drop in crowds).` : "";
 
-  const lt = $("ltLink");
-  if (lt) lt.className = s.status === "waiting" ? "lt" : "lt quiet";
 }
 
 const statsParams = new URLSearchParams({ key: KEY });

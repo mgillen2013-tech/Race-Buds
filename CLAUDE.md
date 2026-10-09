@@ -74,11 +74,12 @@ nothing to announce through.
 1. Twilio: dedicated number saved in the runner's contacts as "Race Buds" (Siri announces the contact
    name). Start carrier registration early, since approval can take days or weeks. Must test whether Siri
    plays a Twilio MMS audio attachment the same way.
-2. LiveTrack link pickup from email is built (see `livetrack.py`). The runner declined a paste-the-link page.
+2. LiveTrack link pickup from email is built (see `livetrack.py`). The runner declined a paste-the-link page
+   and any "Open Garmin LiveTrack" link on the page.
    Untested until a real run with the deployed app: the IMAP search (Garmin's sender and email format).
 3. Possible custom dashboard from LiveTrack data. There is no official LiveTrack API; community projects
    reverse-engineer the page. Spike first: check what the page loads in the browser network tab. Keep the
-   plain LiveTrack link as a fallback. Projected finish is shown; the runner does not want a goal time on the page.
+   plain LiveTrack link was removed from the page at the runner's request. Projected finish is shown; the runner does not want a goal time on the page.
 4. Idea: show the runner's current song (Spotify's now-playing API, or Last.fm for Apple Music).
 5. Dress rehearsal on a long run: phone in a pocket or belt, moving, LiveTrack running, a few notes from family.
    Race crowds can drop cell signal, so test on a busy day if possible.
