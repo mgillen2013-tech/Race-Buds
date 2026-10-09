@@ -110,7 +110,7 @@ def build(raw, segment_miles=4, now=None):
     pace = raw.get("paceSecPerMi")
     hr = raw.get("heartRate")
 
-    finished = distance >= RACE_MILES
+    finished = distance >= RACE_MILES or bool(raw.get("ended"))  # ended: the watch was stopped
     status = "finished" if finished else ("stale" if age > STALE_AFTER_SEC else "live")
     projected = projected_finish(distance, elapsed, splits, finished)
     segs = segments(splits, distance, elapsed, hr, segment_miles, in_progress=not finished)
@@ -127,7 +127,7 @@ def build(raw, segment_miles=4, now=None):
         "segments": segs,
         "progress": min(1.0, distance / RACE_MILES),
         "text": {
-            "where": f"{fmt_miles(RACE_MILES)} miles" if finished else f"Mile {fmt_miles(distance)} of {fmt_miles(RACE_MILES)}",
+            "where": f"{fmt_miles(distance)} miles" if finished else f"Mile {fmt_miles(distance)} of {fmt_miles(RACE_MILES)}",
             "distance": fmt_miles(distance),
             "elapsed": fmt_time(elapsed),
             "pace": fmt_time(pace) if pace else None,

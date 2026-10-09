@@ -30,4 +30,6 @@ Turn on 2-step verification, then create an App Password (Google Account -> Secu
 Use that as SMTP_PASS. Your normal password won't work.
 
 ## Race morning
-Start LiveTrack on the watch, copy the link, paste it into LIVETRACK_URL, redeploy.
+Nothing to paste. Once, beforehand: in the Garmin Connect app, add the Gmail address in SMTP_USER as a
+LiveTrack contact. On race morning just start LiveTrack: Garmin emails the link to that inbox, and the
+app finds the newest one (checks every minute) and shows live stats. LIVETRACK_URL is only a fallback.

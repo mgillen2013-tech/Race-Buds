@@ -13,7 +13,12 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
   mean of last 3 miles), segments (blocks of `SEGMENT_MILES`, pace = time / distance), status
   waiting/live/stale (>90 s old)/finished, and demo data. Tests in `tests/test_stats.py` (`pytest`).
 - `app.py` (Flask): `/` page (needs `?key=ACCESS_KEY`), `/send` upload endpoint, `/api/stats` (same key),
-  `/healthz`. Real LiveTrack data is not wired in yet: without `DEMO_STATS=1` stats are always "waiting".
+  `/healthz`. Stats come from `livetrack.py` (or demo data with `DEMO_STATS=1`).
+- `livetrack.py`: finds the newest LiveTrack link in the `SMTP_USER` Gmail inbox over IMAP (same app
+  password; checked every 60 s with no session, every 5 min while following one; `LIVETRACK_URL` is a
+  fallback), then pulls only new track points from Garmin (cache 5 s, backoff 10 s to 5 min, one fetch at a
+  time). Drops location on arrival. Computes mile splits by interpolation and pace over the last 60 s.
+  A stopped watch (session `end` in the past) shows as finished for 12 h, then back to waiting.
   Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
   `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).
@@ -25,7 +30,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 ## Config (environment variables, see .env.example; never commit real values)
 `DEST_ADDRESS`, `SMTP_USER`, `SMTP_PASS` (Gmail app password), `RUNNER_NAME`, `LIVETRACK_URL`,
 `ACCESS_KEY`, `COOLDOWN_SECONDS`, `SPOKEN_INTRO`, `INTRO_TEMPLATE`, `TEXT_WHEN_SPOKEN`, `MESSAGE_TEMPLATE`,
-`SEGMENT_MILES` (default 4), `DEMO_STATS` (local only; ignored when `RENDER` is set).
+`SEGMENT_MILES` (default 4), `IMAP_HOST` (default imap.gmail.com), `DEMO_STATS` (local only; ignored when `RENDER` is set).
 With no SMTP settings (or `DRY_RUN=1`) clips are saved to `./sent/` instead of emailed.
 
 ## Run locally (Mac)
@@ -69,9 +74,8 @@ nothing to announce through.
 1. Twilio: dedicated number saved in the runner's contacts as "Race Buds" (Siri announces the contact
    name). Start carrier registration early, since approval can take days or weeks. Must test whether Siri
    plays a Twilio MMS audio attachment the same way.
-2. LiveTrack: each session has its own link. Idea: make a dedicated inbox a LiveTrack contact and have the
-   app read the email to pick up the new session link automatically (or add a password-protected page to
-   paste the link without redeploying).
+2. LiveTrack link pickup from email is built (see `livetrack.py`). The runner declined a paste-the-link page.
+   Untested until a real run with the deployed app: the IMAP search (Garmin's sender and email format).
 3. Possible custom dashboard from LiveTrack data. There is no official LiveTrack API; community projects
    reverse-engineer the page. Spike first: check what the page loads in the browser network tab. Keep the
    plain LiveTrack link as a fallback. Projected finish is shown; the runner does not want a goal time on the page.

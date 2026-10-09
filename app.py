@@ -17,6 +17,7 @@ from pathlib import Path
 import imageio_ffmpeg
 from flask import Flask, jsonify, render_template, request
 
+import livetrack
 import stats
 
 app = Flask(__name__)
@@ -50,6 +51,9 @@ SEGMENT_MILES = int(os.environ.get("SEGMENT_MILES", "4"))
 # DEMO_STATS=1 serves sample numbers so the page can be checked without a run. Never in production:
 # it is ignored on Render (which sets RENDER=true).
 DEMO_STATS = os.environ.get("DEMO_STATS", "0") == "1" and not os.environ.get("RENDER")
+# Real stats: the newest Garmin LiveTrack link is read from the Gmail inbox the app sends from
+# (same app password, over IMAP). LIVETRACK_URL is used if no email is found.
+IMAP_HOST = os.environ.get("IMAP_HOST", "imap.gmail.com")
 
 # With DRY_RUN=1 (or no SMTP settings) clips are saved to ./sent instead of emailed.
 DRY_RUN = os.environ.get("DRY_RUN", "0") == "1" or not (DEST_ADDRESS and SMTP_USER and SMTP_PASS)
@@ -145,12 +149,22 @@ def key_ok(supplied: str) -> bool:
     return not ACCESS_KEY or hmac.compare_digest(supplied or "", ACCESS_KEY)
 
 
+def _session_from_email():
+    return livetrack.newest_session_from_gmail(SMTP_USER, SMTP_PASS, IMAP_HOST)
+
+
+LIVE = livetrack.LiveTrack(
+    find_session=_session_from_email if (SMTP_USER and SMTP_PASS) else None,
+    fallback_url=LIVETRACK_URL,
+)
+
+
 def current_stats(demo_variant: str = "live") -> dict:
-    """The live stats payload. Until a real data source is wired in, only demo mode has numbers."""
+    """The live stats payload: sample numbers in demo mode, otherwise Garmin LiveTrack."""
     if DEMO_STATS:
         raw = stats.demo_raw(demo_variant if demo_variant in ("live", "stale", "finished", "waiting") else "live")
     else:
-        raw = None
+        raw = LIVE.raw()
     payload = stats.build(raw, SEGMENT_MILES)
     payload["demo"] = DEMO_STATS
     return payload
@@ -161,10 +175,11 @@ def index():
     key = request.args.get("key", "")
     if not key_ok(key):
         return "This link isn't valid. Ask for the original link.", 403
+    page_stats = current_stats(request.args.get("demo", "live"))
     return render_template(
-        "index.html", runner=RUNNER_NAME, livetrack_url=LIVETRACK_URL, key=key,
+        "index.html", runner=RUNNER_NAME, livetrack_url=LIVE.url or LIVETRACK_URL, key=key,
         max_seconds=MAX_CLIP_SECONDS, cooldown_minutes=COOLDOWN_SECONDS // 60,
-        stats=current_stats(request.args.get("demo", "live")), demo=DEMO_STATS,
+        stats=page_stats, demo=DEMO_STATS,
     )
 
 
