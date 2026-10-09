@@ -15,10 +15,10 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 - `app.py` (Flask): `/` page (needs `?key=ACCESS_KEY`), `/send` upload endpoint, `/api/stats` (same key),
   `/healthz`. Stats come from `livetrack.py` (or demo data with `DEMO_STATS=1`).
 - `livetrack.py`: finds the newest LiveTrack link in the `SMTP_USER` Gmail inbox over IMAP (same app
-  password; checked every 60 s with no session, every 5 min while following one; `LIVETRACK_URL` is a
+  password; checked every 60 s with no live session, every 5 min while following a live one; `LIVETRACK_URL` is a
   fallback), then pulls only new track points from Garmin (cache 5 s, backoff 10 s to 5 min, one fetch at a
   time). Drops location on arrival. Computes mile splits by interpolation and pace over the last 60 s.
-  A stopped watch (session `end` in the past) shows as finished for 12 h, then back to waiting.
+  A stopped watch (session `end` in the past) shows as finished for 2 h, then back to waiting.
   Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
   `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).

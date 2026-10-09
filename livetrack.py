@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 BASE = "https://livetrack.garmin.com"
 URL_RE = re.compile(r"livetrack\.garmin\.com/session/([0-9a-fA-F-]{36})/token/([0-9A-Za-z]+)")
 METERS_PER_MILE = 1609.344
-SHOW_AFTER_END = timedelta(hours=12)  # keep showing a stopped run's final numbers this long
+SHOW_AFTER_END = timedelta(hours=2)  # keep showing a stopped run's final numbers this long
 PACE_WINDOW_SEC = 60  # current pace = distance covered over about the last minute
 KEEP_FIELDS = ("dateTime", "totalDistanceMeters", "totalDurationSecs", "heartRateBeatsPerMin")
 USER_AGENT = ("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 "
@@ -191,7 +191,8 @@ class LiveTrack:
 
     # -- session --
     def _check_session(self, now):
-        every = self.EMAIL_EVERY_LIVE_SEC if self._session else self.EMAIL_EVERY_SEC
+        # Check often when there's nothing live to follow, so a new run is picked up within a minute.
+        every = self.EMAIL_EVERY_LIVE_SEC if self._session and not self._ended() else self.EMAIL_EVERY_SEC
         found = None
         if self._find_session and now - self._email_at >= every:
             self._email_at = now
