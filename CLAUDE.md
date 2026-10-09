@@ -55,8 +55,12 @@ nothing to announce through.
   and `GET /api/sessions/<id>/track-points/common?token=<token>` (`{"trackPoints": [...]}`, paged with
   `begin=`). Both return 403 unless you first GET the session page
   (`/session/<id>/token/<token>`), keep its cookies, and send its `<meta name="csrf-token">` value as the
-  `Livetrack-Csrf-Token` header. Indoors with no GPS fix, `trackPoints` was empty; the fields inside a
-  track point are not seen yet. Garmin also has `/api/messages/spectator/audio` (its own spectator
+  `Livetrack-Csrf-Token` header. Indoors with no GPS fix, `trackPoints` was empty.
+  Real run (Oct 9): one point every 10 s, posted in batches about every 15 s, so data is ~15-20 s behind.
+  Point fields: `dateTime`, `reportedTime`, `totalDistanceMeters`, `totalDurationSecs`, `heartRateBeatsPerMin`,
+  `speedMetersPerSec` (0 when stopped), `cadenceCyclesPerMin`, `powerWatts`, `pointStatus`
+  (MOVING/STATIONARY), `altitude`, `position` (never show it). No mile splits: compute them by
+  interpolating the time each mile is crossed. A session link expires 24 h after it starts. Garmin also has `/api/messages/spectator/audio` (its own spectator
   voice messages), worth a look.
 - Spoken intro: gTTS is an unofficial Google TTS wrapper. It could not be tested in the build sandbox;
   failure falls back to the plain text message, so notes are never blocked. Voice is somewhat robotic.
