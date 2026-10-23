@@ -54,7 +54,10 @@ nothing to announce through.
 - MP3 attachments worked; the first M4A attempt bounced.
 - iPhone Safari notes arrived cut to ~2 s while the phone's own preview played in full: its MP4 recordings
   can carry an edit list claiming only the first ~2 s, and ffmpeg obeys it. Fixed with `-ignore_editlist 1`
-  on MP4 input (test: `tests/test_audio.py`). Laptops (WebM, or MP4 without that edit list) were unaffected.
+  on MP4 input (test: `tests/test_audio.py`). That alone did NOT fix real iPhones (log: 309 KB in, 2.4 s out
+  with intro). So the page now records WebM first when supported, and if a note comes out >1 s shorter than
+  recorded, the server logs "SHORT NOTE" with ffmpeg's view of the file and emails the original to
+  SMTP_USER for diagnosis.
 - Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
 - LiveTrack data (checked Oct 2026): the old `/services/session/<id>/trackpoints` endpoint used by

@@ -365,7 +365,7 @@ const preview = $("preview");
 const nameEl = $("name");
 
 let recorder, stream, chunks = [], blob = null, tick = null, startedAt = 0, mime = "";
-let stopped = false, finishTimer = null;
+let stopped = false, finishTimer = null, recordedSecs = 0;
 
 const baseHint = `Up to ${MAX} sec` + (COOLDOWN_MIN ? ` · one cheer every ${COOLDOWN_MIN} min` : "");
 function syncName() {
@@ -384,7 +384,9 @@ const setState = s => { panel.dataset.state = s; };
 const say = (msg, cls = "") => { statusEl.textContent = msg; statusEl.className = cls; };
 
 function pickMime() {
-  const options = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"];
+  // WebM first: iPhone Safari's MP4 recordings came out cut to ~2 s after conversion. Newer iPhones can
+  // record WebM too; older ones still fall back to MP4.
+  const options = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
   return options.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
 }
 
@@ -407,7 +409,7 @@ async function start() {
     if (e.data && e.data.size) chunks.push(e.data);
     if (stopped) finishSoon();
   };
-  recorder.onstop = () => { stopped = true; finishSoon(); };
+  recorder.onstop = () => { stopped = true; recordedSecs = (Date.now() - startedAt) / 1000; finishSoon(); };
   recorder.start(1000);  // hand over audio every second rather than all at the end
   startedAt = Date.now();
   setState("recording");
@@ -455,6 +457,7 @@ $("send").addEventListener("click", async () => {
   form.append("name", nameEl.value.trim());
   form.append("key", KEY);
   form.append("audio", blob, "note");
+  form.append("secs", recordedSecs.toFixed(1));  // lets the server spot a note that came out short
   try {
     const res = await fetch("/send", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));

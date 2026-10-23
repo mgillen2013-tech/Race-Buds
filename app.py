@@ -148,6 +148,41 @@ def deliver(mp3: bytes, sender_name: str, spoken: bool = False):
         smtp.send_message(msg)
 
 
+def probe(raw: bytes, content_type: str) -> str:
+    """ffmpeg's description of an upload (container, duration, streams), for debugging."""
+    ext = ".mp4" if "mp4" in content_type else ".webm"
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / f"in{ext}"
+        src.write_bytes(raw)
+        err = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-hide_banner", "-i", str(src)],
+                             capture_output=True, text=True, timeout=30).stderr
+    return "\n".join(line.strip() for line in err.splitlines() if "Duration" in line or "Stream" in line or "Input" in line)
+
+
+def report_short_clip(raw: bytes, content_type: str, name: str, recorded: float, out_secs: float):
+    """A note came out much shorter than it was recorded. Log what ffmpeg sees and email the original
+    recording to SMTP_USER so the file can be examined. Never blocks the note itself."""
+    try:
+        details = probe(raw, content_type)
+        app.logger.warning("SHORT NOTE from %r: recorded %.1f s, sent %.1f s. ffmpeg sees:\n%s",
+                           name, recorded, out_secs, details)
+        if DRY_RUN:
+            return
+        msg = EmailMessage()
+        msg["From"] = SMTP_USER
+        msg["To"] = SMTP_USER
+        msg["Subject"] = f"Race Buds debug: note from {name} came out short"
+        msg.set_content(f"Recorded {recorded:.1f} s, sent {out_secs:.1f} s. Type {content_type}.\n\n{details}\n\n"
+                        "The original recording is attached. Upload it to Claude to diagnose.")
+        ext = "mp4" if "mp4" in content_type else "webm"
+        msg.add_attachment(raw, maintype="audio", subtype=ext, filename=f"original.{ext}")
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+            smtp.login(SMTP_USER, SMTP_PASS)
+            smtp.send_message(msg)
+    except Exception:
+        app.logger.exception("couldn't report the short note")
+
+
 # ---- Routes ----
 def key_ok(supplied: str) -> bool:
     return not ACCESS_KEY or hmac.compare_digest(supplied or "", ACCESS_KEY)
@@ -217,10 +252,17 @@ def send():
         intro = spoken_intro(name) if SPOKEN_INTRO else None
         raw = clip.read()
         mp3 = to_mp3(raw, clip.mimetype or "", intro)
+        out_secs = len(mp3) * 8 / 64000  # 64 kbps
+        try:
+            recorded = float(request.form.get("secs", "0"))
+        except ValueError:
+            recorded = 0.0
         # One line per note in the Render logs, to spot phones that send short clips.
-        app.logger.info("note from %r: %s, %d bytes in, about %.1f s out (intro %s), %s",
-                        name, clip.mimetype, len(raw), len(mp3) * 8 / 64000, bool(intro),
+        app.logger.info("note from %r: %s, %d bytes in, recorded %.1f s, about %.1f s out (intro %s), %s",
+                        name, clip.mimetype, len(raw), recorded, out_secs, bool(intro),
                         request.headers.get("User-Agent", "")[:120])
+        if recorded >= 4 and out_secs < recorded - 1:
+            report_short_clip(raw, clip.mimetype or "", name, recorded, out_secs)
         deliver(mp3, name, spoken=intro is not None)
     except Exception:
         app.logger.exception("send failed")
