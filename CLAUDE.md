@@ -19,6 +19,8 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
   fallback), then pulls only new track points from Garmin (cache 5 s, backoff 10 s to 5 min, one fetch at a
   time). Drops location on arrival. Computes mile splits by interpolation and pace over the last 60 s.
   A stopped watch (session `end` in the past) shows as finished for 2 h, then back to waiting.
+  Garmin emails older than 24 h are ignored (their links are dead). A link Garmin refuses (403/404) 3 times
+  in a row is dropped and not retried for 10 min, logged once at INFO (no repeated warnings).
   Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
   `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).

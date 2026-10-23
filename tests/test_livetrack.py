@@ -55,3 +55,44 @@ def test_pace_ignores_standing_still():
 
 def test_no_points():
     assert livetrack.points_to_raw([]) is None
+
+
+# ---- expired links ----
+import urllib.error
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
+
+
+def test_old_email_is_not_recent():
+    now = datetime(2026, 11, 1, 12, tzinfo=timezone.utc)
+    msg = EmailMessage()
+    msg["Date"] = format_datetime(now - timedelta(hours=30))
+    assert not livetrack.is_recent(msg, now)
+    msg.replace_header("Date", format_datetime(now - timedelta(hours=2)))
+    assert livetrack.is_recent(msg, now)
+
+
+class Refused(livetrack.LiveTrack):
+    """Garmin answers 403 for every request, like an expired link."""
+    calls = 0
+
+    def _pull_points(self):
+        Refused.calls += 1
+        raise urllib.error.HTTPError("u", 403, "Forbidden", {}, None)
+
+
+def poke(lt):
+    lt._fetched_at = lt._backoff_until = 0  # skip the cache and backoff waits
+    return lt.raw()
+
+
+def test_dead_link_is_dropped_and_not_retried(caplog):
+    lt = Refused(find_session=lambda: (SID, "TOKEN"))
+    for _ in range(livetrack.GONE_STRIKES):
+        assert poke(lt) is None
+    assert lt._session is None  # dropped after 3 refusals
+    calls = Refused.calls
+    for _ in range(5):
+        poke(lt)  # the inbox still offers the same link: it must be skipped
+    assert Refused.calls == calls
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]  # quiet: no warning spam

@@ -21,12 +21,16 @@ import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from email import policy
+from email.utils import parsedate_to_datetime
 
 log = logging.getLogger(__name__)
 
 BASE = "https://livetrack.garmin.com"
 URL_RE = re.compile(r"livetrack\.garmin\.com/session/([0-9a-fA-F-]{36})/token/([0-9A-Za-z]+)")
 METERS_PER_MILE = 1609.344
+LINK_LIFETIME = timedelta(hours=24)    # Garmin stops serving a LiveTrack link a day after it starts
+GONE_STRIKES = 3                       # refusals in a row before a link is treated as dead
+GONE_RETRY_SEC = 600                   # then leave it alone this long (short, in case it was a glitch)
 SHOW_AFTER_END = timedelta(hours=2)  # keep showing a stopped run's final numbers this long
 PACE_WINDOW_SEC = 60  # current pace = distance covered over about the last minute
 KEEP_FIELDS = ("dateTime", "totalDistanceMeters", "totalDurationSecs", "heartRateBeatsPerMin")
@@ -54,6 +58,17 @@ def session_from_message(msg):
     return None
 
 
+def is_recent(msg, now=None):
+    """True if the email was sent within LINK_LIFETIME (older LiveTrack links no longer work)."""
+    try:
+        sent = parsedate_to_datetime(msg["Date"])
+    except Exception:
+        return True  # no usable date: let Garmin decide
+    if sent.tzinfo is None:
+        sent = sent.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - sent < LINK_LIFETIME
+
+
 def newest_session_from_gmail(user, password, host="imap.gmail.com"):
     """Look through the last two days of mail from Garmin, newest first, for a LiveTrack link."""
     since = (date.today() - timedelta(days=2)).strftime("%d-%b-%Y")
@@ -70,7 +85,10 @@ def newest_session_from_gmail(user, password, host="imap.gmail.com"):
                 typ, parts = box.fetch(msg_id, "(BODY.PEEK[])")  # PEEK: don't mark it read
                 if typ != "OK" or not parts or not isinstance(parts[0], tuple):
                     continue
-                found = session_from_message(email.message_from_bytes(parts[0][1], policy=policy.default))
+                msg = email.message_from_bytes(parts[0][1], policy=policy.default)
+                if not is_recent(msg):
+                    return None  # newest Garmin email is over a day old: its link has expired
+                found = session_from_message(msg)
                 if found:
                     return found
     return None
@@ -152,6 +170,8 @@ class LiveTrack:
         self._info_at = 0.0
         self._backoff_until = 0.0
         self._errors = 0
+        self._strikes = 0   # Garmin refusals in a row for the current link
+        self._gone = {}     # dead link -> time it may be tried again
 
     @property
     def url(self):
@@ -177,7 +197,20 @@ class LiveTrack:
                         self._raw = points_to_raw(self._points)
                         if self._raw:
                             self._raw["ended"] = self._ended()
-                self._errors = 0
+                self._errors = self._strikes = 0
+            except urllib.error.HTTPError as exc:
+                self._errors += 1
+                self._backoff_until = now + min(300, 10 * 2 ** (self._errors - 1))
+                if exc.code in (403, 404, 410) and self._session:
+                    self._strikes += 1
+                    if self._strikes >= GONE_STRIKES:
+                        log.info("LiveTrack link %s no longer works (HTTP %s); waiting for a new run",
+                                 self._session[0], exc.code)
+                        self._gone[self._session] = now + GONE_RETRY_SEC
+                        self._session, self._points, self._raw, self._strikes = None, [], None, 0
+                        self._email_at = 0.0  # look for a newer link right away
+                else:
+                    log.warning("LiveTrack fetch failed (%s); keeping last data", exc)
             except Exception as exc:
                 self._errors += 1
                 self._backoff_until = now + min(300, 10 * 2 ** (self._errors - 1))
@@ -202,10 +235,12 @@ class LiveTrack:
                 log.warning("Couldn't check email for a LiveTrack link (%s)", exc)
         if not found and not self._session:
             found = self._fallback
+        if found and now < self._gone.get(found, 0):
+            found = None  # a link that recently stopped working
         if found and found != self._session:
             log.info("Following LiveTrack session %s", found[0])
             self._session, self._points, self._raw = found, [], None
-            self._session_end, self._opener, self._info_at = None, None, 0.0
+            self._session_end, self._opener, self._info_at, self._strikes = None, None, 0.0, 0
 
     # -- HTTP --
     def _open_page(self):
