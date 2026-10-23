@@ -110,18 +110,21 @@ def to_mp3(raw: bytes, content_type: str, intro: bytes | None = None) -> bytes:
     with tempfile.TemporaryDirectory() as tmp:
         src, dst = Path(tmp) / f"in{ext}", Path(tmp) / "out.mp3"
         src.write_bytes(raw)
+        # iPhone Safari's MP4 recordings can carry an edit list that claims only the first ~2 s.
+        # ffmpeg obeys it and cut every iPhone note short, so read the whole recording instead.
+        src_in = (["-ignore_editlist", "1"] if ext == ".mp4" else []) + ["-i", str(src)]
         if intro:
             intro_file = Path(tmp) / "intro.mp3"
             intro_file.write_bytes(intro)
             norm = "aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono"
             cmd = [
-                ffmpeg, "-y", "-i", str(intro_file), "-i", str(src),
+                ffmpeg, "-y", "-i", str(intro_file), *src_in,
                 "-filter_complex",
                 f"[0:a]{norm},apad=pad_dur=0.4[a0];[1:a]{norm}[a1];[a0][a1]concat=n=2:v=0:a=1[out]",
                 "-map", "[out]", "-t", str(MAX_CLIP_SECONDS + 8), "-b:a", "64k", str(dst),
             ]
         else:
-            cmd = [ffmpeg, "-y", "-i", str(src), "-t", str(MAX_CLIP_SECONDS), "-vn",
+            cmd = [ffmpeg, "-y", *src_in, "-t", str(MAX_CLIP_SECONDS), "-vn",
                    "-ac", "1", "-ar", "44100", "-b:a", "64k", str(dst)]
         subprocess.run(cmd, check=True, capture_output=True, timeout=60)
         return dst.read_bytes()

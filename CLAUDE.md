@@ -52,6 +52,9 @@ nothing to announce through.
 - A blank text body (spoken intro on) made Siri say "a message I can't read" before the clip. So the
   body is never blank: `TEXT_WHEN_SPOKEN` defaults to "Lock in" (a blank value falls back to it).
 - MP3 attachments worked; the first M4A attempt bounced.
+- iPhone Safari notes arrived cut to ~2 s while the phone's own preview played in full: its MP4 recordings
+  can carry an edit list claiming only the first ~2 s, and ffmpeg obeys it. Fixed with `-ignore_editlist 1`
+  on MP4 input (test: `tests/test_audio.py`). Laptops (WebM, or MP4 without that edit list) were unaffected.
 - Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
 - LiveTrack data (checked Oct 2026): the old `/services/session/<id>/trackpoints` endpoint used by
