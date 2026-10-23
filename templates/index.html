@@ -365,6 +365,7 @@ const preview = $("preview");
 const nameEl = $("name");
 
 let recorder, stream, chunks = [], blob = null, tick = null, startedAt = 0, mime = "";
+let stopped = false, finishTimer = null;
 
 const baseHint = `Up to ${MAX} sec` + (COOLDOWN_MIN ? ` · one cheer every ${COOLDOWN_MIN} min` : "");
 function syncName() {
@@ -399,9 +400,15 @@ async function start() {
   mime = pickMime();
   recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
   chunks = [];
-  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
-  recorder.onstop = finish;
-  recorder.start();
+  stopped = false;
+  // iPhone Safari can deliver the last piece of audio *after* the stop event, so wait briefly for it
+  // instead of building the clip the moment recording stops.
+  recorder.ondataavailable = e => {
+    if (e.data && e.data.size) chunks.push(e.data);
+    if (stopped) finishSoon();
+  };
+  recorder.onstop = () => { stopped = true; finishSoon(); };
+  recorder.start(1000);  // hand over audio every second rather than all at the end
   startedAt = Date.now();
   setState("recording");
   tick = setInterval(update, 200);
@@ -419,7 +426,13 @@ function stop() {
   if (recorder && recorder.state !== "inactive") recorder.stop();
 }
 
+function finishSoon() {
+  clearTimeout(finishTimer);
+  finishTimer = setTimeout(finish, 500);
+}
+
 function finish() {
+  if (panel.dataset.state !== "recording") return;
   clearInterval(tick);
   stream.getTracks().forEach(t => t.stop());
   blob = new Blob(chunks, { type: recorder.mimeType || mime || "audio/webm" });

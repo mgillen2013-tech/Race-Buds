@@ -21,6 +21,7 @@ import livetrack
 import stats
 
 app = Flask(__name__)
+app.logger.setLevel("INFO")  # so the per-note log line shows up in Render's logs
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # reject uploads over 5 MB
 
 # ---- Settings (all from environment variables, see .env.example) ----
@@ -211,7 +212,12 @@ def send():
 
     try:
         intro = spoken_intro(name) if SPOKEN_INTRO else None
-        mp3 = to_mp3(clip.read(), clip.mimetype or "", intro)
+        raw = clip.read()
+        mp3 = to_mp3(raw, clip.mimetype or "", intro)
+        # One line per note in the Render logs, to spot phones that send short clips.
+        app.logger.info("note from %r: %s, %d bytes in, about %.1f s out (intro %s), %s",
+                        name, clip.mimetype, len(raw), len(mp3) * 8 / 64000, bool(intro),
+                        request.headers.get("User-Agent", "")[:120])
         deliver(mp3, name, spoken=intro is not None)
     except Exception:
         app.logger.exception("send failed")
