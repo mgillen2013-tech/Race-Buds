@@ -55,7 +55,8 @@ nothing to announce through.
 - iPhone Safari notes arrived cut to ~2 s while the phone's own preview played in full: its MP4 recordings
   can carry an edit list claiming only the first ~2 s, and ffmpeg obeys it. Fixed with `-ignore_editlist 1`
   on MP4 input (test: `tests/test_audio.py`). That alone did NOT fix real iPhones (log: 309 KB in, 2.4 s out
-  with intro). So the page now records WebM first when supported, and if a note comes out >1 s shorter than
+  with intro). Recording WebM first when supported FIXED it on an iPhone (Safari 26, Oct 23). If a note
+  still comes out >1 s shorter than
   recorded, the server logs "SHORT NOTE" with ffmpeg's view of the file and emails the original to
   SMTP_USER for diagnosis.
 - Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
