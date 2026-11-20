@@ -23,7 +23,13 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
   in a row is dropped and not retried for 10 min, logged once at INFO (no repeated warnings).
   Send flow: validate key and name -> per-name cooldown (`COOLDOWN_SECONDS`, default 0 = off; in memory) -> optional spoken intro
   ("From <name>", gTTS) -> ffmpeg (bundled via imageio-ffmpeg) converts WebM/MP4 to mono 64 kbps MP3 ->
-  `deliver()` emails it via Gmail SMTP to `<runner number>@vzwpix.com` (Verizon's email-to-MMS gateway).
+  `deliver()`: with `RELAY_TOKEN` set, queues it for the Mac relay (`relay.py` queue; `/relay/next`,
+  `/relay/ack`, `/relay/script` with `X-Relay-Token` or `?token=`). `mac_relay.py`, downloaded from
+  `/relay/script` with address and token filled in, runs on a Mac signed in to Messages with a second
+  Apple ID and sends each note to `RELAY_TO` as an iMessage (text, then the MP3, via osascript; files
+  staged in ~/Pictures/RaceBuds because Messages may refuse attachments elsewhere). Unconfirmed notes are
+  re-sent after 2 min; queue is in memory (lost on restart), notes kept 6 h. Without `RELAY_TOKEN` it
+  falls back to the old email to `<runner number>@vzwpix.com`, which Verizon has shut down.
 - Hosted on Render (paid instance, required, see below), deployed from a private GitHub repo.
   Start command: `gunicorn app:app --workers 1 --threads 4` (one worker: the cooldown is in memory and
   resets on restart).
@@ -32,7 +38,7 @@ while the phone is locked, hands-free. Built for the runner's November 2026 mara
 ## Config (environment variables, see .env.example; never commit real values)
 `DEST_ADDRESS`, `SMTP_USER`, `SMTP_PASS` (Gmail app password), `RUNNER_NAME`, `LIVETRACK_URL`,
 `ACCESS_KEY`, `COOLDOWN_SECONDS`, `SPOKEN_INTRO`, `INTRO_TEMPLATE`, `TEXT_WHEN_SPOKEN`, `MESSAGE_TEMPLATE`,
-`SEGMENT_MILES` (default 4), `IMAP_HOST` (default imap.gmail.com), `DEMO_STATS` (local only; ignored when `RENDER` is set).
+`RELAY_TOKEN`, `RELAY_TO`, `SEGMENT_MILES` (default 4), `IMAP_HOST` (default imap.gmail.com), `DEMO_STATS` (local only; ignored when `RENDER` is set).
 With no SMTP settings (or `DRY_RUN=1`) clips are saved to `./sent/` instead of emailed.
 
 ## Run locally (Mac)
@@ -61,7 +67,9 @@ nothing to announce through.
   still comes out >1 s shorter than
   recorded, the server logs "SHORT NOTE" with ffmpeg's view of the file and emails the original to
   SMTP_USER for diagnosis.
-- Verizon's gateway is flaky (spam filtering) and was reported to be shutting down March 31, 2027.
+- Verizon shut down the vzwpix/vtext gateway early (bounce on Nov 20, 2026: "550 5.1.1 Blocked.
+  Decommission of Email to Text Vtext/VZWPix"). Replaced by the Mac iMessage relay. Not yet confirmed:
+  whether Siri plays an iMessage MP3 attachment through AirPods the way it did MMS.
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
 - LiveTrack data (checked Oct 2026): the old `/services/session/<id>/trackpoints` endpoint used by
   github.com/Novex/garmin-livetrack-obs now 404s. The current site (Next.js) uses

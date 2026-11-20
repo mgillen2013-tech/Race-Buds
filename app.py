@@ -3,6 +3,7 @@
 Prototype delivery path: email -> Verizon MMS gateway (number@vzwpix.com).
 To move to Twilio later, replace deliver() and keep everything else.
 """
+import base64
 import hmac
 import io
 import os
@@ -15,9 +16,10 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import imageio_ffmpeg
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 import livetrack
+import relay
 import stats
 
 app = Flask(__name__)
@@ -46,6 +48,13 @@ INTRO_TEMPLATE = os.environ.get("INTRO_TEMPLATE", "From {name}")
 # Text body when the intro is spoken. Siri reads this aloud before the clip. Must not be blank:
 # a blank body made Siri say "a message I can't read" (and blank messages have bounced).
 TEXT_WHEN_SPOKEN = os.environ.get("TEXT_WHEN_SPOKEN", "").strip() or "Lock in"
+
+# Mac relay (Verizon shut down email-to-text in Nov 2026): with RELAY_TOKEN set, notes wait in a queue
+# and a script on a Mac sends each one to RELAY_TO (the runner's iPhone number or Apple ID email) as
+# an iMessage. See mac_relay.py. RELAY_TOKEN is a long random secret shared only with that script.
+RELAY_TOKEN = os.environ.get("RELAY_TOKEN", "")
+RELAY_TO = os.environ.get("RELAY_TO", "")
+RELAY = relay.RelayQueue()
 
 # Live stats on the page. SEGMENT_MILES sets the segment size.
 SEGMENT_MILES = int(os.environ.get("SEGMENT_MILES", "4"))
@@ -132,6 +141,13 @@ def to_mp3(raw: bytes, content_type: str, intro: bytes | None = None) -> bytes:
 
 # ---- Delivery ----
 def deliver(mp3: bytes, sender_name: str, spoken: bool = False):
+    text = TEXT_WHEN_SPOKEN if spoken else MESSAGE_TEMPLATE.replace("{name}", sender_name)
+    if RELAY_TOKEN:
+        note_id = RELAY.put(mp3, sender_name, text)
+        seen = time.time() - RELAY.last_poll
+        app.logger.info("queued note %d for the Mac relay (%d waiting; Mac last checked in %s)", note_id,
+                        RELAY.pending(), f"{seen:.0f} s ago" if RELAY.last_poll else "never")
+        return
     if DRY_RUN:
         out = Path(__file__).parent / "sent"
         out.mkdir(exist_ok=True)
@@ -141,7 +157,7 @@ def deliver(mp3: bytes, sender_name: str, spoken: bool = False):
     msg["From"] = SMTP_USER
     msg["To"] = DEST_ADDRESS
     msg["Subject"] = "Voice note"  # an empty subject + empty body got bounced by Verizon
-    msg.set_content(TEXT_WHEN_SPOKEN if spoken else MESSAGE_TEMPLATE.replace("{name}", sender_name))
+    msg.set_content(text)
     msg.add_attachment(mp3, maintype="audio", subtype="mpeg", filename="voice-note.mp3")
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
         smtp.login(SMTP_USER, SMTP_PASS)
@@ -269,6 +285,47 @@ def send():
         release_slot(sender_key)  # a failed send shouldn't burn their turn
         return jsonify(error="Couldn't send that one. Try again."), 500
     return jsonify(ok=True)
+
+
+# ---- Mac relay ----
+def relay_ok() -> bool:
+    supplied = request.headers.get("X-Relay-Token") or request.args.get("token", "")
+    return bool(RELAY_TOKEN) and hmac.compare_digest(supplied, RELAY_TOKEN)
+
+
+@app.get("/relay/next")
+def relay_next():
+    if not relay_ok():
+        return "", 404
+    if not RELAY_TO:
+        return jsonify(error="RELAY_TO isn't set on the server"), 500
+    note = RELAY.next()
+    if note is None:
+        return "", 204
+    return jsonify(id=note["id"], to=RELAY_TO, text=note["text"], audio=base64.b64encode(note["mp3"]).decode(),
+                   **{"from": note["from"]})
+
+
+@app.post("/relay/ack")
+def relay_ack():
+    if not relay_ok():
+        return "", 404
+    try:
+        note_id = int(request.args.get("id", ""))
+    except ValueError:
+        return jsonify(error="bad id"), 400
+    return jsonify(ok=RELAY.ack(note_id))
+
+
+@app.get("/relay/script")
+def relay_script():
+    """mac_relay.py with this server's address and the token filled in, ready to run on the Mac."""
+    if not relay_ok():
+        return "", 404
+    base = f"{request.headers.get('X-Forwarded-Proto', request.scheme)}://{request.host}"
+    script = (Path(__file__).parent / "mac_relay.py").read_text()
+    script = script.replace('"__BASE__"', repr(base)).replace('"__TOKEN__"', repr(RELAY_TOKEN))
+    return Response(script, mimetype="text/x-python")
 
 
 @app.get("/healthz")

@@ -25,6 +25,17 @@ other states. Demo mode shows a yellow DEMO tag and is ignored on Render.
 3. Add the variables from `.env.example` under Environment.
 4. Share `https://your-app.onrender.com/?key=YOUR_ACCESS_KEY` with your people.
 
+## Mac relay (how notes reach the phone)
+Verizon shut down its email-to-text gateway in Nov 2026, so notes now go through a Mac:
+1. On the Mac, sign Messages in to a *second* Apple ID (not the runner's), so the phone gets a notification.
+   On the iPhone, save that Apple ID as a contact named "Race Buds".
+2. In Render, set `RELAY_TOKEN` (output of `openssl rand -hex 24`) and `RELAY_TO` (runner's +1 number).
+3. On the Mac, in Terminal:
+       curl -s "https://YOUR-APP.onrender.com/relay/script?token=RELAY_TOKEN" -o ~/racebuds_relay.py
+       caffeinate -i python3 ~/racebuds_relay.py
+   Allow Terminal to control Messages when asked. Keep the Mac plugged in, lid open, Terminal open.
+Notes wait on the server (up to 6 h) while the Mac is off, and are lost if the server restarts.
+
 ## Gmail setup
 Turn on 2-step verification, then create an App Password (Google Account -> Security).
 Use that as SMTP_PASS. Your normal password won't work.
