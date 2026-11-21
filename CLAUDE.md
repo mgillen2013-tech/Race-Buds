@@ -68,8 +68,11 @@ nothing to announce through.
   recorded, the server logs "SHORT NOTE" with ffmpeg's view of the file and emails the original to
   SMTP_USER for diagnosis.
 - Verizon shut down the vzwpix/vtext gateway early (bounce on Nov 20, 2026: "550 5.1.1 Blocked.
-  Decommission of Email to Text Vtext/VZWPix"). Replaced by the Mac iMessage relay. Not yet confirmed:
-  whether Siri plays an iMessage MP3 attachment through AirPods the way it did MMS.
+  Decommission of Email to Text Vtext/VZWPix"). Replaced by the Mac iMessage relay, CONFIRMED working end to end
+  on Nov 21, 2026 (note sent from the site, delivered by the Mac as an iMessage, announced on the iPhone).
+  Setup gotchas: a new Apple ID can't reuse a phone number that has hit Apple's limit, and codes to it can
+  be temporarily blocked; the iPhone must have the relay Apple ID saved as a contact ("Race Buds") or the
+  messages land silently in Unknown Senders; Render env var names are case-sensitive (RELAY_TOKEN, RELAY_TO).
 - Render's free tier blocks outbound SMTP (ports 465/587). A paid instance is required for Gmail SMTP.
 - LiveTrack data (checked Oct 2026): the old `/services/session/<id>/trackpoints` endpoint used by
   github.com/Novex/garmin-livetrack-obs now 404s. The current site (Next.js) uses
